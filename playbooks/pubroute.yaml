@@ -1,0 +1,62 @@
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+    - name: Import VPC Variables
+      include_vars: vars/vpc_vars
+
+    - name: Create vprofile VPC
+      ec2_vpc_net:
+        name: "{{vpc_name}}"
+        cidr_block: "{{vpcCidr}}"
+        region: "{{region}}"
+        dns_support: yes
+        dns_hostnames: yes
+        tenancy: default
+        state: "{{state}}"
+      register: vpcout
+
+  #  - debug:
+  #      var: vpcout
+  
+  
+############# CREATE SUBNET FOR EACH ZONE ############################
+
+ 
+    - name: create Public Subnet in Zone
+      ec2_vpc_subnet:
+        vpc_id: "{{vpcout.vpc.id}}"
+        region: "{{ region }}"
+        az: "{{ zone }}"
+        state: "{{state}}"
+        cidr: "{{ PubSubCidr }}"
+        map_public: yes
+        resource_tags:
+          Name: vprofile-pubsub
+      register: pubsub_out
+
+
+
+    - name: Internet Gateway Setup
+      ec2_vpc_igw:
+        vpc_id: "{{ vpcout.vpc.id }}"
+        region: "{{ region }}"
+        state: "{{state}}"
+        resource_tags:
+          Name: vprofile_IGW
+      register: igw_out
+
+    - name: Set up public subnet route table
+      ec2_vpc_route_table:
+        vpc_id: "{{vpcout.vpc.id}}"
+        region: "{{ region }}"
+        tags:
+          Name: VProfile-PubRT
+        subnets:
+          ############ ADD ALL SUBNETS IN FOLLOWING FORMAT #################
+          - "{{pubsub_out.subnet.id}}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{igw_out.gateway_id}}"
+      register: pubRT_out
+

@@ -1,0 +1,17 @@
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+
+    - name: Create example ec2 key
+      ec2_key:
+        name: example-key
+        region: us-east-1
+      register: key_out
+
+    - name: Save private key into pem file
+      copy:
+        content: "{{key_out.key.private_key}}"
+        dest: "./example-key.pem"
+        mode: 0400
+      when: key_out.changed

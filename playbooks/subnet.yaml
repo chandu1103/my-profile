@@ -1,0 +1,32 @@
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+    - name: Import VPC Variables
+      include_vars: vars/vpc_vars
+
+    - name: Create vprofile VPC
+      ec2_vpc_net:
+        name: "{{vpc_name}}"
+        cidr_block: "{{vpcCidr}}"
+        region: "{{region}}"
+        dns_support: yes
+        dns_hostnames: yes
+        tenancy: default
+        state: "{{state}}"
+      register: vpcout
+
+  #  - debug:
+  #      var: vpcout
+
+    - name: create Public Subnet in Zone
+      ec2_vpc_subnet:
+        vpc_id: "{{vpcout.vpc.id}}"
+        region: "{{ region }}"
+        az: "{{ zone1 }}"
+        state: "{{state}}"
+        cidr: "{{ PubSubCidr }}"
+        map_public: yes
+        resource_tags:
+          Name: vprofile-pubsub1
+      register: pubsub_out

@@ -1,0 +1,54 @@
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+    - name: Import VPC Variables
+      include_vars: vars/vpc_vars
+
+    - name: Create vprofile VPC
+      ec2_vpc_net:
+        name: "{{vpc_name}}"
+        cidr_block: "{{vpcCidr}}"
+        region: "{{region}}"
+        dns_support: yes
+        dns_hostnames: yes
+        tenancy: default
+        state: "{{state}}"
+      register: vpcout
+      
+  ############# CREATE PUBLIC AND PRIVATE SUBNET FOR EACH ZONE ############################
+
+    - name: create Private subnet in zone
+      ec2_vpc_subnet:
+        vpc_id: "{{ vpcout.vpc.id }}"
+        region: "{{ region }}"
+        az: "{{ zone }}"
+        state: "{{state}}"
+        cidr: "{{ PrivSubCidr }}"
+        resource_tags:
+          Name: vprofile_privsub
+      register: privsub_out
+
+    - name: Create new nat gateway and allocate new EIP if a nat gateway does not yet exist in the subnet.
+      ec2_vpc_nat_gateway:
+        state: "{{state}}"
+         ####### SELECT ANY SUBNET FOR ELASTIC IP #########
+        subnet_id: "{{ pubsub_out.subnet.id }}"
+        wait: yes
+        region: "{{ region }}"
+        if_exist_do_not_create: true
+      register: NATGW_out
+    
+    - name: Set up Private subnet route table
+      ec2_vpc_route_table:
+        vpc_id: "{{vpcout.vpc.id}}"
+        region: "{{ region }}"
+        tags:
+          Name: Vprofile_PrivRT
+        subnets:
+          ############ ADD ALL SUBNETS IN FOLLOWING FORMAT #################
+          - "{{ privsub_out.subnet.id }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ NATGW_out.nat_gateway_id }}"
+      register: privRT_out

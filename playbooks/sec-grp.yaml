@@ -1,0 +1,17 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+
+    - name: Create Sec Grp
+      ec2_group:
+        name: sec-grp
+        description: Allow port 22 from everywhere and all port within sg
+        region: us-east-1
+        vpc_id: vpc-id
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: "{{MYIP}}"
+      register: securitygroup_out

@@ -1,0 +1,21 @@
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+
+    - name: Creating an instance
+      ec2:
+        key_name: 
+        region: us-east-1
+        instance_type: t2.micro
+        image: ami-id
+        wait: yes
+        wait_timeout: 300
+        instance_tags:
+          Name: "example"
+          Project: "devops"
+          Owner: DevOps Team
+        exact_count: 1
+        group_id: sec-grp-id
+        vpc_subnet_id: subnet-id
+      register: example-ec2_out
